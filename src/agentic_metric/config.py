@@ -7,6 +7,10 @@ CLAUDE_HOME = Path.home() / ".claude"
 STATS_CACHE = CLAUDE_HOME / "stats-cache.json"
 PROJECTS_DIR = CLAUDE_HOME / "projects"
 
+# Codex CLI data paths
+CODEX_HOME = Path.home() / ".codex"
+CODEX_SESSIONS_DIR = CODEX_HOME / "sessions"
+
 # Cursor data paths
 CURSOR_TRACKING_DB = Path.home() / ".cursor" / "ai-tracking" / "ai-code-tracking.db"
 

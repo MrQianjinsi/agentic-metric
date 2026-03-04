@@ -66,4 +66,7 @@ def create_default_registry() -> CollectorRegistry:
     from .cursor import CursorCollector
     registry.register(CursorCollector())
 
+    from .codex import CodexCollector
+    registry.register(CodexCollector())
+
     return registry
