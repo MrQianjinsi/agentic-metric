@@ -15,6 +15,10 @@ CODEX_SESSIONS_DIR = CODEX_HOME / "sessions"
 CURSOR_TRACKING_DB = Path.home() / ".cursor" / "ai-tracking" / "ai-code-tracking.db"
 CURSOR_STATE_DB = Path.home() / ".config" / "Cursor" / "User" / "globalStorage" / "state.vscdb"
 
+# VS Code (Copilot Chat) data paths
+VSCODE_STORAGE_DIR = Path.home() / ".config" / "Code" / "User" / "workspaceStorage"
+VSCODE_GLOBAL_CHAT_DIR = Path.home() / ".config" / "Code" / "User" / "globalStorage" / "emptyWindowChatSessions"
+
 # Application data
 DATA_DIR = Path.home() / ".local" / "share" / "agentic_metric"
 DB_PATH = DATA_DIR / "data.db"

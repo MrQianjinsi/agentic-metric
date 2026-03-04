@@ -69,4 +69,7 @@ def create_default_registry() -> CollectorRegistry:
     from .codex import CodexCollector
     registry.register(CodexCollector())
 
+    from .vscode import VscodeCollector
+    registry.register(VscodeCollector())
+
     return registry

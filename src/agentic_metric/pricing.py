@@ -29,6 +29,38 @@ _MODEL_ALIASES: dict[str, str] = {
     "gpt-5.1-codex-max": "gpt-5.1-codex",
 }
 
+# Copilot Chat result.details display name → our pricing key
+_COPILOT_MODEL_MAP: dict[str, str] = {
+    "claude opus 4.6": "claude-opus-4-6",
+    "claude opus 4.5": "claude-opus-4-5",
+    "claude sonnet 4.6": "claude-sonnet-4-6",
+    "claude sonnet 4.5": "claude-sonnet-4-5",
+    "claude sonnet 4": "claude-sonnet-4",
+    "claude sonnet 3.5": "claude-sonnet-4",
+    "claude haiku 4.5": "claude-haiku-4-5",
+    "gpt-5.2": "gpt-5.2",
+    "gpt-5 mini": "gpt-4o",
+    "gpt-4o mini": "gpt-4o",
+    "gpt-4o": "gpt-4o",
+    "o3": "o3",
+    "o4-mini": "o4-mini",
+    "gemini 3 pro": "gemini-3-pro",
+}
+
+
+def normalize_copilot_model(details: str) -> str:
+    """Normalize Copilot Chat result.details string to a pricing key.
+
+    Input looks like ``"Claude Haiku 4.5 • 1x"`` or ``"GPT-5 mini • 0.9x"``.
+    """
+    if not details:
+        return ""
+    # Strip the "• Nx" suffix and lowercase
+    name = details.split("•")[0].strip().lower()
+    # Strip "(Preview)" or similar tags
+    name = name.replace("(preview)", "").strip()
+    return _COPILOT_MODEL_MAP.get(name, "")
+
 
 def normalize_model(name: str) -> str:
     """Normalize external model names (e.g. Cursor) to our pricing keys."""

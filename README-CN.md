@@ -2,7 +2,7 @@
 
 [English](README.md)
 
-本地化的 AI coding agent 指标监控工具。追踪 Claude Code、Cursor 等 agent 的 token 用量和成本，提供 TUI 仪表盘和 CLI 命令。
+本地化的 AI coding agent 指标监控工具。追踪 Claude Code、Cursor、VS Code (Copilot Chat) 等 agent 的 token 用量和成本，提供 TUI 仪表盘和 CLI 命令。
 
 **所有数据完全存储在本地，使用过程不会联网。** 工具仅读取本机的 agent 数据文件（如 `~/.claude/`）和进程信息，不发送任何数据到外部服务器。
 
@@ -24,6 +24,9 @@
 | Cursor | `~/.config/Cursor/User/globalStorage/state.vscdb` | Composer 会话、token 用量、模型 |
 | Cursor | 进程检测 | 运行状态、工作目录 |
 | Codex | `~/.codex/sessions/` | JSONL 会话、token 用量、模型 |
+| VS Code | `~/.config/Code/User/workspaceStorage/*/chatSessions/` | 聊天会话（JSON + JSONL）、token 用量（仅 JSONL）、模型 |
+| VS Code | `~/.config/Code/User/globalStorage/emptyWindowChatSessions/` | 空窗口聊天会话 |
+| VS Code | 进程检测 | 运行状态、工作目录 |
 
 所有数据汇总存储在 `~/.local/share/agentic_metric/data.db`（SQLite）。
 
@@ -56,20 +59,20 @@ agentic-metric tui             # 启动 TUI 仪表盘
 
 不同 agent 在本地暴露的数据详细程度不同：
 
-| 字段 | Claude Code | Codex | Cursor |
-|------|:-----------:|:-----:|:------:|
-| 会话 ID | ✓ JSONL 文件 | ✓ JSONL 文件 | ✓ composerId |
-| 项目路径 | ✓ | ✓ | ◐ 部分（从 bubble 或 conversationState 提取） |
-| Git 分支 | ✓ | ✓ | ✗ 不存储 |
-| 模型名称 | ✓ | ✓ | ✓ 但 "default" 模式不记录实际模型 |
-| Input tokens | ✓ 逐条累加 | ✓ 累计值 | ◐ 约 75% 会话有数据 |
-| Output tokens | ✓ 逐条累加 | ✓ 累计值 | ◐ 约 75% 会话有数据 |
-| Cache tokens | ✓ 读+写 | ✓ 仅读 | ✗ 不暴露 |
-| 用户轮次 | ✓ | ✓ | ✓ |
-| 消息总数 | ✓ 所有消息 | ✓ 仅 AI 回复 | ✓ 所有消息 |
-| 首条/末条 prompt | ✓ | ✓ | ✓ 从 bubble text 提取 |
-| 成本估算 | ✓ | ✓ | ◐ 仅在有 token 数据时可估算 |
-| 实时活跃状态 | ✓ PID + 会话文件精确匹配 | ✓ PID + 会话文件精确匹配 | ◐ 仅进程级检测（标记最新会话为活跃） |
+| 字段 | Claude Code | Codex | Cursor | VS Code (Copilot) |
+|------|:-----------:|:-----:|:------:|:-----------------:|
+| 会话 ID | ✓ JSONL 文件 | ✓ JSONL 文件 | ✓ composerId | ✓ sessionId |
+| 项目路径 | ✓ | ✓ | ◐ 部分（从 bubble 或 conversationState 提取） | ✓ workspace.json URI |
+| Git 分支 | ✓ | ✓ | ✗ 不存储 | ✗ 不存储 |
+| 模型名称 | ✓ | ✓ | ✓ 但 "default" 模式不记录实际模型 | ✓ result.details（如 "Claude Haiku 4.5 • 1x"） |
+| Input tokens | ✓ 逐条累加 | ✓ 累计值 | ◐ 约 75% 会话有数据 | ◐ 仅 JSONL 格式 |
+| Output tokens | ✓ 逐条累加 | ✓ 累计值 | ◐ 约 75% 会话有数据 | ◐ 仅 JSONL 格式 |
+| Cache tokens | ✓ 读+写 | ✓ 仅读 | ✗ 不暴露 | ✗ 不暴露 |
+| 用户轮次 | ✓ | ✓ | ✓ | ✓ |
+| 消息总数 | ✓ 所有消息 | ✓ 仅 AI 回复 | ✓ 所有消息 | ✓ 轮次 × 2 |
+| 首条/末条 prompt | ✓ | ✓ | ✓ 从 bubble text 提取 | ✓ message.text |
+| 成本估算 | ✓ | ✓ | ◐ 仅在有 token 数据时可估算 | ◐ 仅在有 token 数据时可估算 |
+| 实时活跃状态 | ✓ PID + 会话文件精确匹配 | ✓ PID + 会话文件精确匹配 | ◐ 仅进程级检测（标记最新会话为活跃） | ◐ 仅进程级检测 |
 
 **主要差异说明：**
 
@@ -77,6 +80,7 @@ agentic-metric tui             # 启动 TUI 仪表盘
 - **Cursor** — 实时检测只能获取进程 PID，而历史会话使用 `state.vscdb` 中的 composer UUID。两者无法关联，因此仅在 Cursor 进程运行时将最新会话标记为活跃。
 - **Token 覆盖率** — Cursor 并非对所有会话都记录 token 消耗，老版本会话和部分 "default" 模型会话的 token 为零。Cache token 细分（读/写）不可用。
 - **模型名称** — Cursor 的 "default" 模型设置不记录后端实际使用的模型，这类会话在模型列显示为 `default`。
+- **VS Code (Copilot Chat)** — 存在两种存储格式：旧版 JSON（无 token 数据）和新版增量 JSONL（含 `result.usage`，包括 `promptTokens`/`completionTokens`）。Token 用量仅在 JSONL 格式的会话中可用。模型名称从 Copilot 的显示字符串（如 "GPT-4o • 1x"）提取并归一化为定价键。工作区路径支持本地（`file://`）、SSH 远程（`vscode-remote://ssh-remote+host`）和容器（`attached-container+...`）URI。
 
 ## 隐私
 

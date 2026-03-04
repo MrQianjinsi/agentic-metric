@@ -2,7 +2,7 @@
 
 [中文文档](README-CN.md)
 
-A local-only monitoring tool for AI coding agents. Track token usage and costs across Claude Code, Cursor, and more — with a TUI dashboard and CLI.
+A local-only monitoring tool for AI coding agents. Track token usage and costs across Claude Code, Cursor, VS Code (Copilot Chat), and more — with a TUI dashboard and CLI.
 
 **All data stays on your machine. No network requests, no telemetry, no data leaves your computer.** The tool only reads local agent data files (e.g. `~/.claude/`) and process info.
 
@@ -24,6 +24,9 @@ A local-only monitoring tool for AI coding agents. Track token usage and costs a
 | Cursor | `~/.config/Cursor/User/globalStorage/state.vscdb` | Composer sessions, token usage, model |
 | Cursor | Process detection | Running status, working directory |
 | Codex | `~/.codex/sessions/` | JSONL sessions, token usage, model |
+| VS Code | `~/.config/Code/User/workspaceStorage/*/chatSessions/` | Chat sessions (JSON + JSONL), token usage (JSONL only), model |
+| VS Code | `~/.config/Code/User/globalStorage/emptyWindowChatSessions/` | Empty-window chat sessions |
+| VS Code | Process detection | Running status, working directory |
 
 All aggregated data is stored locally in `~/.local/share/agentic_metric/data.db` (SQLite).
 
@@ -56,20 +59,20 @@ agentic-metric tui             # Launch TUI dashboard
 
 Different agents expose different levels of local data. Here's what's available for each:
 
-| Field | Claude Code | Codex | Cursor |
-|-------|:-----------:|:-----:|:------:|
-| Session ID | ✓ JSONL | ✓ JSONL | ✓ composerId |
-| Project path | ✓ JSONL | ✓ JSONL | ◐ partial (from bubble or conversationState) |
-| Git branch | ✓ JSONL | ✓ JSONL | ✗ not stored |
-| Model | ✓ JSONL | ✓ JSONL | ✓ modelConfig / bubble modelInfo |
-| Input tokens | ✓ per-message | ✓ cumulative | ◐ ~75% of sessions |
-| Output tokens | ✓ per-message | ✓ cumulative | ◐ ~75% of sessions |
-| Cache tokens | ✓ read + write | ✓ read only | ✗ not exposed |
-| User turns | ✓ | ✓ | ✓ |
-| Message count | ✓ all messages | ✓ AI replies only | ✓ all messages |
-| First/last prompt | ✓ | ✓ | ✓ from bubble text |
-| Cost estimation | ✓ | ✓ | ◐ only when tokens available |
-| Live active status | ✓ PID + session file match | ✓ PID + session file match | ◐ process-level only (latest session marked active) |
+| Field | Claude Code | Codex | Cursor | VS Code (Copilot) |
+|-------|:-----------:|:-----:|:------:|:-----------------:|
+| Session ID | ✓ JSONL | ✓ JSONL | ✓ composerId | ✓ sessionId |
+| Project path | ✓ JSONL | ✓ JSONL | ◐ partial (from bubble or conversationState) | ✓ workspace.json URI |
+| Git branch | ✓ JSONL | ✓ JSONL | ✗ not stored | ✗ not stored |
+| Model | ✓ JSONL | ✓ JSONL | ✓ modelConfig / bubble modelInfo | ✓ result.details (e.g. "Claude Haiku 4.5 • 1x") |
+| Input tokens | ✓ per-message | ✓ cumulative | ◐ ~75% of sessions | ◐ JSONL format only |
+| Output tokens | ✓ per-message | ✓ cumulative | ◐ ~75% of sessions | ◐ JSONL format only |
+| Cache tokens | ✓ read + write | ✓ read only | ✗ not exposed | ✗ not exposed |
+| User turns | ✓ | ✓ | ✓ | ✓ |
+| Message count | ✓ all messages | ✓ AI replies only | ✓ all messages | ✓ turns × 2 |
+| First/last prompt | ✓ | ✓ | ✓ from bubble text | ✓ message.text |
+| Cost estimation | ✓ | ✓ | ◐ only when tokens available | ◐ only when tokens available |
+| Live active status | ✓ PID + session file match | ✓ PID + session file match | ◐ process-level only (latest session marked active) | ◐ process-level only |
 
 **Key differences:**
 
@@ -77,6 +80,7 @@ Different agents expose different levels of local data. Here's what's available 
 - **Cursor** — Live detection only sees the process PID, while historical sessions use composer UUIDs from `state.vscdb`. There is no way to link a running Cursor process to a specific composer session, so the most recent session is marked active when the process is running.
 - **Token coverage** — Cursor does not record token counts for all sessions. Older sessions and some "default" model sessions have zero tokens. Cache token breakdown (read/write) is not available.
 - **Model name** — Cursor's "default" model setting doesn't record which model was actually used on the backend. These sessions show `default` in the model column.
+- **VS Code (Copilot Chat)** — Has two storage formats: legacy JSON (older sessions, no token data) and newer incremental JSONL (with `result.usage` containing `promptTokens`/`completionTokens`). Token usage is only available for sessions stored in JSONL format. Model names are extracted from Copilot's display strings (e.g. "GPT-4o • 1x") and normalized to pricing keys. Workspace paths support local (`file://`), SSH remote (`vscode-remote://ssh-remote+host`), and container (`attached-container+...`) URIs.
 
 ## Privacy
 
