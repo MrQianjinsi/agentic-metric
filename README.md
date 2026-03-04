@@ -47,6 +47,36 @@ agentic-metric history         # Historical trends (default 30 days)
 agentic-metric history -d 7    # Last 7 days
 agentic-metric sync            # Force sync data to local database
 agentic-metric tui             # Launch TUI dashboard
+agentic-metric bar             # One-line summary for status bars
+```
+
+### Status Bar Integration
+
+`agentic-metric bar` outputs a compact one-line summary (e.g. `AM: $1.23 | 4.5M`) for embedding into status bars like i3blocks, waybar, tmux, vim statusline, etc.
+
+**i3blocks / waybar:**
+
+```ini
+[agentic-metric]
+command=agentic-metric bar
+interval=60
+```
+
+**tmux:**
+
+```tmux
+set -g status-right '#(agentic-metric bar | head -1)'
+set -g status-interval 60    # refresh every 60 seconds (default 15)
+```
+
+**vim / neovim statusline:**
+
+```vim
+set statusline+=%{system('agentic-metric\ bar\ \|\ head\ -1')}
+" statusline refreshes on cursor move, mode change, etc.
+" to force a periodic refresh, add a timer:
+autocmd CursorHold * redrawstatus
+set updatetime=60000          " trigger CursorHold after 60s idle
 ```
 
 ### TUI Keybindings
@@ -67,8 +97,8 @@ Different agents expose different levels of local data. Here's what's available 
 | Project path | ✓ JSONL | ✓ JSONL | ◐ partial (from bubble or conversationState) | ✓ workspace.json URI | ✓ session.directory (launch cwd) |
 | Git branch | ✓ JSONL | ✓ JSONL | ✗ not stored | ✗ not stored | ✗ not stored |
 | Model | ✓ JSONL | ✓ JSONL | ✓ modelConfig / bubble modelInfo | ✓ result.details (e.g. "Claude Haiku 4.5 • 1x") | ✓ message.modelID |
-| Input tokens | ✓ per-message | ✓ cumulative | ◐ ~75% of sessions | ◐ JSONL format only | ✓ per-message |
-| Output tokens | ✓ per-message | ✓ cumulative | ◐ ~75% of sessions | ◐ JSONL format only | ✓ per-message (includes reasoning) |
+| Input tokens | ✓ per-message | ✓ cumulative | ◐ older versions only | ◐ JSONL format only | ✓ per-message |
+| Output tokens | ✓ per-message | ✓ cumulative | ◐ older versions only | ◐ JSONL format only | ✓ per-message (includes reasoning) |
 | Cache tokens | ✓ read + write | ✓ read only | ✗ not exposed | ✗ not exposed | ◐ read only (write always 0) |
 | User turns | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Message count | ✓ all messages | ✓ AI replies only | ✓ all messages | ✓ turns × 2 | ✓ all messages |
@@ -80,7 +110,7 @@ Different agents expose different levels of local data. Here's what's available 
 
 - **Claude Code & Codex** — Each running process maps to a JSONL session file with a unique session ID. This allows precise matching between live processes and DB sessions for accurate active status.
 - **Cursor** — Live detection only sees the process PID, while historical sessions use composer UUIDs from `state.vscdb`. There is no way to link a running Cursor process to a specific composer session, so the most recent session is marked active when the process is running.
-- **Token coverage** — Cursor does not record token counts for all sessions. Older sessions and some "default" model sessions have zero tokens. Cache token breakdown (read/write) is not available.
+- **Token coverage** — Cursor stored per-bubble `tokenCount` (input/output) in `state.vscdb` in earlier versions (~2025-05 to ~2025-12), but newer versions no longer populate this field — all values are zero. Cursor appears to have moved usage tracking to a server-side system, so local token data is unavailable for recent sessions. Cache token breakdown (read/write) has never been available.
 - **Model name** — Cursor's "default" model setting doesn't record which model was actually used on the backend. These sessions show `default` in the model column.
 - **VS Code (Copilot Chat)** — Has two storage formats: legacy JSON (older sessions, no token data) and newer incremental JSONL (with `result.usage` containing `promptTokens`/`completionTokens`). Token usage is only available for sessions stored in JSONL format. Model names are extracted from Copilot's display strings (e.g. "GPT-4o • 1x") and normalized to pricing keys. Workspace paths support local (`file://`), SSH remote (`vscode-remote://ssh-remote+host`), and container (`attached-container+...`) URIs.
 - **OpenCode** — Stores all data in a local SQLite database (`opencode.db`). Token data is per-message with `input`, `output`, `reasoning`, and `cache.read`/`cache.write` fields. Reasoning tokens are counted as output tokens (billed at output rate). The `cost` field in messages is always 0, so all costs are estimated using the pricing table. `cache.write` is also always 0.

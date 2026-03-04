@@ -189,9 +189,12 @@ def bar() -> None:
     import sys
     from .store.database import Database
     from .store import aggregator
+    from .collectors import create_default_registry
 
     try:
         db = Database()
+        registry = create_default_registry()
+        registry.sync_all(db)
         overview = aggregator.get_today_overview(db)
         db.close()
     except Exception:
