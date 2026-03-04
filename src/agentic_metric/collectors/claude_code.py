@@ -121,17 +121,23 @@ class _SessionAccum:
             self.message_count += 1
 
         if entry_type == "user":
-            self.user_turns += 1
             if not self.git_branch:
                 self.git_branch = entry.get("gitBranch", "")
             msg = entry.get("message", {})
             content = msg.get("content", "") if isinstance(msg, dict) else ""
-            if isinstance(content, str):
-                clean = _extract_prompt(content)
-                if clean:
-                    if not self.first_prompt:
-                        self.first_prompt = clean[:80]
-                    self.last_prompt = clean[:80]
+            # tool_result entries also have type="user"; only count real human input
+            is_tool_result = isinstance(content, list) and any(
+                isinstance(c, dict) and c.get("type") == "tool_result"
+                for c in content
+            )
+            if not is_tool_result:
+                self.user_turns += 1
+                if isinstance(content, str):
+                    clean = _extract_prompt(content)
+                    if clean:
+                        if not self.first_prompt:
+                            self.first_prompt = clean[:80]
+                        self.last_prompt = clean[:80]
 
         elif entry_type == "assistant":
             msg = entry.get("message", {})
