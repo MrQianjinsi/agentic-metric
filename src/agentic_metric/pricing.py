@@ -20,6 +20,7 @@ PRICING: dict[str, tuple[float, float, float, float]] = {
     "o4-mini":           (1.1,  4.4, 0.275, 0.0),
     "kimi-k2":           (0.60, 2.50, 0.15, 0.0),
     "kimi-k2.5":         (0.60, 3.00, 0.15, 0.0),
+    "coder-model":       (0.65, 3.25, 0.13, 0.0),
 }
 
 _DEFAULT_PRICING = (5.0, 25.0, 0.50, 6.25)  # fallback to opus pricing

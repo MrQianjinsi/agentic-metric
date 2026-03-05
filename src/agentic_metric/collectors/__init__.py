@@ -75,4 +75,7 @@ def create_default_registry() -> CollectorRegistry:
     from .opencode import OpenCodeCollector
     registry.register(OpenCodeCollector())
 
+    from .qwen_code import QwenCodeCollector
+    registry.register(QwenCodeCollector())
+
     return registry

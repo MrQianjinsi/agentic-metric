@@ -2,7 +2,7 @@
 
 [English](README.md)
 
-本地化的 AI coding agent 指标监控工具。追踪 Claude Code、Codex、Cursor、OpenCode、VS Code (Copilot Chat) 等 agent 的 token 用量和成本，提供 TUI 仪表盘和 CLI 命令。
+本地化的 AI coding agent 指标监控工具。追踪 Claude Code、Codex、Cursor、OpenCode、Qwen Code、VS Code (Copilot Chat) 等 agent 的 token 用量和成本，提供 TUI 仪表盘和 CLI 命令。
 
 **支持平台：Linux 和 macOS。**
 
@@ -38,6 +38,8 @@
 | VS Code | 进程检测 | 运行状态、工作目录 |
 | OpenCode | `$DATA/opencode/opencode.db` | SQLite 会话、消息、token 用量、模型 |
 | OpenCode | 进程检测 | 运行状态、活跃会话匹配 |
+| Qwen Code | `~/.qwen/projects/*/chats/` | JSONL 会话、token 用量、模型、分支 |
+| Qwen Code | 进程检测 | 运行状态、工作目录 |
 
 所有数据汇总存储在 `$DATA/agentic_metric/data.db`（SQLite）。
 
@@ -100,20 +102,20 @@ set updatetime=60000          " 空闲 60 秒后触发 CursorHold
 
 不同 agent 在本地暴露的数据详细程度不同：
 
-| 字段 | Claude Code | Codex | Cursor | VS Code (Copilot) | OpenCode |
-|------|:-----------:|:-----:|:------:|:-----------------:|:--------:|
-| 会话 ID | ✓ JSONL 文件 | ✓ JSONL 文件 | ✓ composerId | ✓ sessionId | ✓ session 表 |
-| 项目路径 | ✓ | ✓ | ◐ 部分（从 bubble 或 conversationState 提取） | ✓ workspace.json URI | ✓ session.directory（启动目录） |
-| Git 分支 | ✓ | ✓ | ✗ 不存储 | ✗ 不存储 | ✗ 不存储 |
-| 模型名称 | ✓ | ✓ | ✓ 但 "default" 模式不记录实际模型 | ✓ result.details（如 "Claude Haiku 4.5 • 1x"） | ✓ message.modelID |
-| Input tokens | ✓ 逐条累加 | ✓ 累计值 | ◐ 仅旧版本 | ◐ 仅 JSONL 格式 | ✓ 逐条累加 |
-| Output tokens | ✓ 逐条累加 | ✓ 累计值 | ◐ 仅旧版本 | ◐ 仅 JSONL 格式 | ✓ 逐条累加（含 reasoning） |
-| Cache tokens | ✓ 读+写 | ✓ 仅读 | ✗ 不暴露 | ✗ 不暴露 | ◐ 仅读（write 始终为 0） |
-| 用户轮次 | ✓ | ✓ | ✓ | ✓ | ✓ |
-| 消息总数 | ✓ user + assistant（排除 tool_result） | ✓ user + assistant | ✓ 对话 headers | ✓ 轮次 × 2 | ✓ user + assistant |
-| 首条/末条 prompt | ✓ | ✓ | ✓ 从 bubble text 提取 | ✓ message.text | ✓ 从 part 表提取 |
-| 成本估算 | ✓ | ✓ | ◐ 仅在有 token 数据时可估算 | ◐ 仅在有 token 数据时可估算 | ◐ 全部为估算（上报 cost 始终为 0） |
-| 实时活跃状态 | ✓ PID + 会话文件精确匹配 | ✓ PID + 会话文件精确匹配 | ◐ 仅进程级检测（标记最新会话为活跃） | ◐ 仅进程级检测 | ✓ PID + DB 会话匹配 |
+| 字段 | Claude Code | Codex | Cursor | VS Code (Copilot) | OpenCode | Qwen Code |
+|------|:-----------:|:-----:|:------:|:-----------------:|:--------:|:---------:|
+| 会话 ID | ✓ JSONL 文件 | ✓ JSONL 文件 | ✓ composerId | ✓ sessionId | ✓ session 表 | ✓ JSONL 文件 |
+| 项目路径 | ✓ | ✓ | ◐ 部分（从 bubble 或 conversationState 提取） | ✓ workspace.json URI | ✓ session.directory（启动目录） | ✓ |
+| Git 分支 | ✓ | ✓ | ✗ 不存储 | ✗ 不存储 | ✗ 不存储 | ✓ |
+| 模型名称 | ✓ | ✓ | ✓ 但 "default" 模式不记录实际模型 | ✓ result.details（如 "Claude Haiku 4.5 • 1x"） | ✓ message.modelID | ✓（通过 telemetry） |
+| Input tokens | ✓ 逐条累加 | ✓ 累计值 | ◐ 仅旧版本 | ◐ 仅 JSONL 格式 | ✓ 逐条累加 | ✓ 逐响应（telemetry） |
+| Output tokens | ✓ 逐条累加 | ✓ 累计值 | ◐ 仅旧版本 | ◐ 仅 JSONL 格式 | ✓ 逐条累加（含 reasoning） | ✓ 逐响应（telemetry） |
+| Cache tokens | ✓ 读+写 | ✓ 仅读 | ✗ 不暴露 | ✗ 不暴露 | ◐ 仅读（write 始终为 0） | ◐ 仅读（write 不暴露） |
+| 用户轮次 | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| 消息总数 | ✓ user + assistant（排除 tool_result） | ✓ user + assistant | ✓ 对话 headers | ✓ 轮次 × 2 | ✓ user + assistant | ✓ user + assistant |
+| 首条/末条 prompt | ✓ | ✓ | ✓ 从 bubble text 提取 | ✓ message.text | ✓ 从 part 表提取 | ✓ 从 message.parts 提取 |
+| 成本估算 | ✓ | ✓ | ◐ 仅在有 token 数据时可估算 | ◐ 仅在有 token 数据时可估算 | ◐ 全部为估算（上报 cost 始终为 0） | ✓（按 qwen3-coder-plus 定价） |
+| 实时活跃状态 | ✓ PID + 会话文件精确匹配 | ✓ PID + 会话文件精确匹配 | ◐ 仅进程级检测（标记最新会话为活跃） | ◐ 仅进程级检测 | ✓ PID + DB 会话匹配 | ✓ PID + 会话文件精确匹配 |
 
 **主要差异说明：**
 
@@ -123,6 +125,7 @@ set updatetime=60000          " 空闲 60 秒后触发 CursorHold
 - **模型名称** — Cursor 的 "default" 模型设置不记录后端实际使用的模型，这类会话在模型列显示为 `default`。
 - **VS Code (Copilot Chat)** — 存在两种存储格式：旧版 JSON（无 token 数据）和新版增量 JSONL（含 `result.usage`，包括 `promptTokens`/`completionTokens`）。Token 用量仅在 JSONL 格式的会话中可用。模型名称从 Copilot 的显示字符串（如 "GPT-4o • 1x"）提取并归一化为定价键。工作区路径支持本地（`file://`）、SSH 远程（`vscode-remote://ssh-remote+host`）和容器（`attached-container+...`）URI。
 - **OpenCode** — 数据存储在本地 SQLite 数据库（`opencode.db`）。Token 数据按消息粒度记录，包含 `input`、`output`、`reasoning` 和 `cache.read`/`cache.write` 字段。Reasoning tokens 计入 output tokens（按 output 费率计费）。消息中的 `cost` 字段始终为 0，因此所有成本均通过定价表估算。`cache.write` 也始终为 0。
+- **Qwen Code** — JSONL 布局与 Claude Code 类似，存储在 `~/.qwen/projects/<哈希路径>/chats/` 下。Token 数据来自 `system/ui_telemetry` 条目（`qwen-code.api_response`），而非 assistant 消息的 usage 字段。成本按 qwen3-coder-plus 定价估算。Qwen Code 默认使用免费 OAuth，实际费用可能为 $0。
 
 ## 隐私
 

@@ -14,6 +14,10 @@ CLAUDE_HOME = _HOME / ".claude"
 STATS_CACHE = CLAUDE_HOME / "stats-cache.json"
 PROJECTS_DIR = CLAUDE_HOME / "projects"
 
+# Qwen Code data paths
+QWEN_HOME = _HOME / ".qwen"
+QWEN_PROJECTS_DIR = QWEN_HOME / "projects"
+
 # Codex CLI data paths
 CODEX_HOME = _HOME / ".codex"
 CODEX_SESSIONS_DIR = CODEX_HOME / "sessions"
