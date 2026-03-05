@@ -12,7 +12,8 @@ app = typer.Typer(
     name="agentic-metric",
     help="Monitor token usage and costs across AI coding agents.",
     invoke_without_command=True,
-    add_completion=False,
+    add_completion=True,
+    context_settings={"help_option_names": ["-h", "--help"]},
 )
 
 console = Console()
