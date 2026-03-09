@@ -247,10 +247,10 @@ class _LiveMonitor:
         if not self._cwd_map_built or not cwd_set.issubset(self._cwd_map.keys()):
             self._build_cwd_map()
 
-        # Build cwd -> pid mapping (if multiple pids share a cwd, pick one)
-        cwd_to_pid: dict[str, int] = {}
+        # Build cwd -> list of pids (multiple sessions may share a cwd)
+        cwd_to_pids: dict[str, list[int]] = {}
         for pid, cwd in pid_cwds.items():
-            cwd_to_pid[cwd] = pid
+            cwd_to_pids.setdefault(cwd, []).append(pid)
 
         results: list[LiveSession] = []
         active_files: set[Path] = set()
@@ -260,7 +260,7 @@ class _LiveMonitor:
             if not project_dir:
                 continue
 
-            # Find most recently modified .jsonl
+            # Find most recently modified .jsonl files
             try:
                 jsonl_files = sorted(
                     project_dir.glob("*.jsonl"),
@@ -272,23 +272,29 @@ class _LiveMonitor:
             if not jsonl_files:
                 continue
 
-            latest = jsonl_files[0]
-            if latest in active_files:
-                continue
-            active_files.add(latest)
+            # Pick as many JSONL files as there are active PIDs for this CWD
+            pids = cwd_to_pids.get(cwd, [])
+            num_sessions = max(1, len(pids))
 
-            # Get or create accumulator
-            accum = self._accums.get(latest)
-            if accum is None:
-                accum = _SessionAccum(latest, cwd, pid=cwd_to_pid.get(cwd, 0))
-                self._accums[latest] = accum
-            else:
-                # Update pid in case it changed across refreshes
-                accum.pid = cwd_to_pid.get(cwd, accum.pid)
+            for idx, jf in enumerate(jsonl_files[:num_sessions]):
+                if jf in active_files:
+                    continue
+                active_files.add(jf)
 
-            accum.read_new_lines()
-            if accum.user_turns > 0:
-                results.append(accum.to_live_session())
+                pid = pids[idx] if idx < len(pids) else 0
+
+                # Get or create accumulator
+                accum = self._accums.get(jf)
+                if accum is None:
+                    accum = _SessionAccum(jf, cwd, pid=pid)
+                    self._accums[jf] = accum
+                else:
+                    # Update pid in case it changed across refreshes
+                    accum.pid = pid
+
+                accum.read_new_lines()
+                if accum.user_turns > 0:
+                    results.append(accum.to_live_session())
 
         # Prune stale accumulators
         stale = [k for k in self._accums if k not in active_files]
